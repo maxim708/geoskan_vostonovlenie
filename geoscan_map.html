@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>БПЛА GEOSCAN - Карта полета</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+        }
+        
+        .map-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .map-section {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .static-map {
+            width: 100%;
+            height: 500px;
+            background: #f5f5f5;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .map-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .map-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .points-list {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+        
+        .point-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .point-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .point-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .point-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .point-filename {
+            font-weight: bold;
+            color: #333;
+            font-size: 1em;
+        }
+        
+        .point-coords {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .point-description {
+            color: #888;
+            font-size: 0.9em;
+            font-style: italic;
+            margin-top: 5px;
+        }
+        
+        .coordinates-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+        }
+        
+        .coordinates-section h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .coord-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .coord-table th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+        }
+        
+        .coord-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .coord-table tr:hover {
+            background: #f7fafc;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        /* Стили для скроллбара */
+        .points-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .points-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .points-list::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+        
+        .points-list::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚁 БПЛА GEOSCAN - Карта полета</h1>
+            <div class="subtitle">
+                Школьный проект "ГеоПамять" | 07.02.2026 20:22
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">2</div>
+                <div class="stat-label">Фотографий</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">150 м</div>
+                <div class="stat-label">Мин. высота</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">152 м</div>
+                <div class="stat-label">Макс. высота</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">10:30</div>
+                <div class="stat-label">Начало съемки</div>
+            </div>
+        </div>
+        
+        <div class="map-section">
+            <div  id="map">
+                <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU"></script>
+                    <script>
+                        // Создаем карту
+                        ymaps.ready(init);
+                        
+                        function init() {
+                            var map = new ymaps.Map('map', {
+                                center: [49.933106, 41.239050],
+                                zoom: 15
+                            });
+
+                            var placemark0 = new ymaps.Placemark([49.932264, 41.239349], {
+                                balloonContent: '<strong><img src="GEOSCAN_Дом_1.jpg" width="200"></div></strong><br>' +
+                                            '📍Координаты: 49.932264, 41.239349<br>' +
+                                            '📏Высота: 150.5 м<br>' +
+                                            '⏰Время: 10:30:00<br>' +
+                                            'Описание: Жилой Дом (на его месте сейчас Дом культуры)'
+                            });
+                            map.geoObjects.add(placemark0);
+
+                            var placemark1 = new ymaps.Placemark([49.933947, 41.238752], {
+                                balloonContent: '<strong><img src="GEOSCAN_Дом_2.jpg" width="200"></div></strong><br>' +
+                                            '📍Координаты: 49.933947, 41.238752<br>' +
+                                            '📏Высота: 152.0 м<br>' +
+                                            '⏰Время: 10:31:00<br>' +
+                                            'Описание: Жилой Дом (на его месте сейчас Школа)'
+                            });
+                            map.geoObjects.add(placemark1);
+
+                        }
+                    </script>
+                
+            </div>
+            
+            <div class="points-list">
+                <h3 style="color: #667eea; margin-bottom: 20px;">📸 Точки съемки</h3>
+
+                <div class="point-card" onclick="showPoint(0)">
+                    <div class="point-header">
+                        <div class="point-number">1</div>
+                        <div class="point-filename">GEOSCAN_Дом_1.jpg</div>
+                    </div>
+                    <div class="point-coords">
+                        📍 Широта: 49.932264<br>
+                        📍 Долгота: 41.239349
+                    </div>
+                    <div class="point-coords">
+                        📏 Высота: 150.5 м
+                    </div>
+                    <div class="point-coords">
+                        ⏰ Время: 10:30:00
+                    </div>
+                    <div class="point-description">
+                        Жилой Дом (на его месте сейчас Дом культуры)
+                    </div>
+                </div>
+
+                <div class="point-card" onclick="showPoint(1)">
+                    <div class="point-header">
+                        <div class="point-number">2</div>
+                        <div class="point-filename">GEOSCAN_Дом_2.jpg</div>
+                    </div>
+                    <div class="point-coords">
+                        📍 Широта: 49.933947<br>
+                        📍 Долгота: 41.238752
+                    </div>
+                    <div class="point-coords">
+                        📏 Высота: 152.0 м
+                    </div>
+                    <div class="point-coords">
+                        ⏰ Время: 10:31:00
+                    </div>
+                    <div class="point-description">
+                        Жилой Дом (на его месте сейчас Школа)
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        
+        <div class="coordinates-section">
+            <h3>📍 Координаты для Яндекс.Карт/Google Maps</h3>
+            <table class="coord-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Точка</th>
+                        <th>Широта</th>
+                        <th>Долгота</th>
+                        <th>Ссылка</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td><strong>1</strong></td>
+                        <td>GEOSCAN_Дом_1.jpg</td>
+                        <td>49.932264</td>
+                        <td>41.239349</td>
+                        <td>
+                            <a href="https://yandex.ru/maps/?ll=41.239349,49.932264&mode=search&z=17.16&sll=49.932264,41.239349" target="_blank" style="color: #667eea; margin-right: 10px;">
+                                Яндекс.Карты
+                            </a>
+                            <a href="https://www.google.com/maps?q=49.932264,41.239349" target="_blank" style="color: #34A853;">
+                                Google Maps
+                            </a>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td><strong>2</strong></td>
+                        <td>GEOSCAN_Дом_2.jpg</td>
+                        <td>49.933947</td>
+                        <td>41.238752</td>
+                        <td>
+                            <a href="https://yandex.ru/maps/?ll=41.238752,49.933947&mode=search&z=17.16&sll=49.933947,41.238752" target="_blank" style="color: #667eea; margin-right: 10px;">
+                                Яндекс.Карты
+                            </a>
+                            <a href="https://www.google.com/maps?q=49.933947,41.238752" target="_blank" style="color: #34A853;">
+                                Google Maps
+                            </a>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="footer">
+            <p>🚁 Проект выполнен с использованием данных БПЛА GEOSCAN</p>
+            <p>Школьный проект "ГеоПамять" | 2026 г.</p>
+            <p style="font-size: 0.8em; margin-top: 10px; color: #888;">
+                Для создания интерактивной карты используйте координаты выше в Яндекс.Картах или Google Maps
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Функция для показа информации о точке
+        function showPoint(index) {
+            const point = [{"файл": "GEOSCAN_Дом_1.jpg", "широта": 49.932264, "долгота": 41.239349, "высота": 150.5, "время": "10:30:00", "описание": "Жилой Дом (на его месте сейчас Дом культуры)"}, {"файл": "GEOSCAN_Дом_2.jpg", "широта": 49.933947, "долгота": 41.238752, "высота": 152.0, "время": "10:31:00", "описание": "Жилой Дом (на его месте сейчас Школа)"}];
+            if (index >= 0 && index < point.length) {
+                const p = point[index];
+                alert(
+                    `Точка #${index + 1}\n` +
+                    `Файл: ${p.файл}\n` +
+                    `Координаты: ${p.широта.toFixed(6)}, ${p.долгота.toFixed(6)}\n` +
+                    `Высота: ${p.высота} м\n` +
+                    `Время: ${p.время}\n` +
+                    `Описание: ${p.описание || 'Нет описания'}`
+                );
+                
+            }
+        }
+        
+        // Функция для скачивания данных в JSON
+        function downloadJSON() {
+            const data = [{"файл": "GEOSCAN_Дом_1.jpg", "широта": 49.932264, "долгота": 41.239349, "высота": 150.5, "время": "10:30:00", "описание": "Жилой Дом (на его месте сейчас Дом культуры)"}, {"файл": "GEOSCAN_Дом_2.jpg", "широта": 49.933947, "долгота": 41.238752, "высота": 152.0, "время": "10:31:00", "описание": "Жилой Дом (на его месте сейчас Школа)"}];
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = 'geoscan_data.json';
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+        
+        // Функция для скачивания координат в CSV
+        function downloadCSV() {
+            const points = [{"файл": "GEOSCAN_Дом_1.jpg", "широта": 49.932264, "долгота": 41.239349, "высота": 150.5, "время": "10:30:00", "описание": "Жилой Дом (на его месте сейчас Дом культуры)"}, {"файл": "GEOSCAN_Дом_2.jpg", "широта": 49.933947, "долгота": 41.238752, "высота": 152.0, "время": "10:31:00", "описание": "Жилой Дом (на его месте сейчас Школа)"}];
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Номер,Файл,Широта,Долгота,Высота,Время,Описание\n";
+            
+            points.forEach((point, index) => {
+                const row = [
+                    index + 1,
+                    point.файл,
+                    point.широта,
+                    point.долгота,
+                    point.высота,
+                    point.время,
+                    point.описание || ''
+                ].join(",");
+                csvContent += row + "\n";
+            });
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "geoscan_coordinates.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Добавляем кнопки для скачивания
+        document.addEventListener('DOMContentLoaded', function() {
+            const footer = document.querySelector('.footer');
+            const downloadButtons = `
+                <div style="margin-top: 20px;">
+                    <button onclick="downloadJSON()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; margin-right: 10px; cursor: pointer;">
+                        📥 Скачать JSON
+                    </button>
+                    <button onclick="downloadCSV()" style="background: #34A853; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                        📊 Скачать CSV
+                    </button>
+                </div>
+            `;
+            footer.insertAdjacentHTML('beforeend', downloadButtons);
+        });
+    </script>
+</body>
+</html>
